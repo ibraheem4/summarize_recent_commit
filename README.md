@@ -47,6 +47,7 @@ cargo build --release
 Run it # enter path of your git project repo (# under the hood it runs a separate command to get details of each commit)
 ```bash
 cargo run --release /Users/matthewdi/Desktop/screenpipe/screen-pipe git log HEAD..origin/main  
+cargo run --release /Users/matthewdi/Desktop/screenpipe/screen-pipe git log -n 2 # get last n commits
 ```
 
 ## Overview

@@ -1,3 +1,4 @@
+use dotenv::dotenv;
 use std::env;
 use std::process::Command;
 use std::str;
@@ -66,6 +67,8 @@ fn open_md_in_preview(file_path: &str) {
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
         eprintln!("Usage: {} <repo_path> <git_command> [<args>...]", args[0]);
