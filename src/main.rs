@@ -15,7 +15,7 @@ fn run_git_command(repo_path: &str, git_command: &[String]) -> Result<String, St
     println!("Running command: {:?}", command);
 
     let output = command.output().map_err(|e| format!("Failed to execute command: {}", e))?;
-    println!("Git: {}", output.status);
+    // println!("Git: {}", output.status);
     if output.status.success() {
         println!("{}", "all good".green());
         let stdout = str::from_utf8(&output.stdout)
@@ -57,7 +57,6 @@ async fn summarize_changes(changes: &str, system_prompt: &str, user_prompt: &str
 }
 
 fn open_md_in_preview(file_path: &str) {
-    // Open the file in VS Code and show the preview
     Command::new("code")
         .arg(file_path)
         .arg("--command")
@@ -98,28 +97,11 @@ fn print_help() {
     println!("  If no prompt types are specified, 'summary' will be used by default.");
 }
 
-fn get_current_commit(repo_path: &str) -> Result<String, String> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_path)
-        .arg("rev-parse")
-        .arg("HEAD")
-        .output()
-        .map_err(|e| format!("Failed to execute git rev-parse: {}", e))?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        Err(format!("Git rev-parse command failed: {}", String::from_utf8_lossy(&output.stderr)))
-    }
-}
-
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
     let args: Vec<String> = env::args().collect();
-    // Check for help command
     if args.len() > 1 && (args[1] == "--help" || args[1] == "-h") {
         print_help();
         return;
@@ -135,40 +117,21 @@ async fn main() {
     let summary_type = &args[4];
     let git_command: Vec<String> = args[3..4].to_vec();
 
-    let current_commit = match get_current_commit(repo_path) {
-        Ok(hash) => hash,
-        Err(e) => {
-            eprintln!("Error getting current commit: {}", e);
-            String::from("Unknown")
-        }
-    };
-
-    // Define core prompt types with improved system prompts
-    let all_prompt_types: Vec<(&str, &str, &str)> = vec![
+    let all_prompt_types = vec![
         ("summary",
          "You are an AI assistant specializing in summarizing git commits. Provide clear, concise summaries that capture the essence of the changes made in each commit. Focus on the most important modifications and their potential impact on the project.",
          "Summarize the following git changes, highlighting the key modifications:"),
-
         ("technical",
          "You are an expert software developer with deep knowledge of various programming languages and software architecture. Analyze git commits from a technical perspective, focusing on code changes, potential optimizations, and adherence to best practices.",
          "Provide a technical summary of the following git changes, including code analysis and potential implications:"),
-
         ("blog",
          "You are a tech blogger with a knack for explaining complex technical concepts in an engaging and accessible way. Your goal is to create interesting, informative content about software development and project progress based on git commits.",
          "Write a brief, engaging blog post summarizing the following git changes, focusing on the overall progress and interesting developments:"),
     ];
 
-    // Find the index where prompt types start (if any)
     let prompt_start_index = args.iter().position(|arg| all_prompt_types.iter().any(|(name, ..)| *name == arg));
+    let selected_prompts = prompt_start_index.map_or_else(|| vec!["summary".to_string()], |index| args[index..].to_vec());
 
-    // Select prompt types based on user input or use default if none specified
-    let selected_prompts: Vec<String> = if let Some(index) = prompt_start_index {
-        args[index..].to_vec()
-    } else {
-        vec!["summary".to_string()]
-    };
-
-    // Filter prompt types based on user selection
     let prompt_types: Vec<_> = all_prompt_types
         .into_iter()
         .filter(|(name, ..)| selected_prompts.contains(&name.to_string()))
@@ -186,14 +149,12 @@ async fn main() {
                 return;
             }
 
-            // Extract commit hashes
             let re = Regex::new(r"commit (\b[0-9a-f]{5,40}\b)").unwrap();
             let commit_hashes: Vec<&str> = re.captures_iter(&changes)
                 .map(|cap| cap.get(1).unwrap().as_str())
                 .collect();
 
             println!("-----------------------------------------------------------------------");
-            println!("Current commit: {}", current_commit.green());
             println!("Once all commits are processed the script will open a summary text file");
             println!("_______________________________________________________________________");
             println!("Total number of commits: {}", commit_hashes.len());
@@ -204,18 +165,9 @@ async fn main() {
             let mut file = File::create(&file_path).expect("Failed to create file");
 
             writeln!(file, "# Git Commit Summaries\n").expect("Failed to write to file");
-            writeln!(file, "Current commit: {}\n", current_commit).expect("Failed to write to file");
-            writeln!(file, "-----------------------------------------------------------------------").expect("Failed to write to file");
-            writeln!(file, "-----------------------------------------------------------------------").expect("Failed to write to file");
-            writeln!(file, " ").expect("Failed to write to file");
-            writeln!(file, "PRESS CMD+SHIFT+V TO VIEW IN MARKDOWN").expect("Failed to write to file");
-            writeln!(file, " ").expect("Failed to write to file");
-            writeln!(file, "_______________________________________________________________________").expect("Failed to write to file");
-            writeln!(file, "-----------------------------------------------------------------------").expect("Failed to write to file");
             writeln!(file, "Total number of commits: {}\n", commit_hashes.len()).expect("Failed to write to file");
 
             if summary_type == "all" {
-                // Summarize all commits together
                 let all_commit_details = commit_hashes.iter()
                     .filter_map(|&commit_hash| {
                         let git_show_command = vec!["show".to_string(), commit_hash.to_string()];
@@ -234,7 +186,6 @@ async fn main() {
                     }
                 }
             } else {
-                // Summarize commits individually
                 for (index, commit_hash) in commit_hashes.iter().enumerate() {
                     let git_show_command = vec!["show".to_string(), commit_hash.to_string()];
                     match run_git_command(repo_path, &git_show_command) {
