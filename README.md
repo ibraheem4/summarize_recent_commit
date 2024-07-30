@@ -1,10 +1,8 @@
-[Demo:](https://github.com/user-attachments/assets/7a6fa4d5-f77f-4493-a652-6f3e464ddf95)
+# Summarize commits and diffs of your team members with a single command
 
-# Summarize commits of your team members with a single command
+I hate reading through thousands of commits from my team or trying to understand large diffs. It takes a lot of time, the commit messages are often incomplete, and the file diffs don't provide an immediate understanding of the changes. Additionally, copying commits or diffs manually to ChatGPT is frustrating.
 
-I hate reading through thousands of commits from my team. It takes a lot of time, the commit messages are often incomplete, and the file diffs don't provide an immediate understanding of the commit logic. Additionally, copying commits manually to ChatGPT is frustrating.
-
-Solved! Use your normal git commands to summarize all commits from your team into a single markdown text file.
+Solved! Use your normal git commands to summarize all commits or current diffs from your team into a single markdown text file.
 
 ## Next steps
 
@@ -47,14 +45,17 @@ Build it
 cargo build --release
 ```
 
-Run it # enter path of your git project repo (# under the hood it runs a separate command to get details of each commit)
+Run it # enter path of your git project repo (# under the hood it runs a separate command to get details of each commit or the current diff)
 
 ```bash
 # Summarize all commits between HEAD and origin/main
-cargo run --release /path/to/your/repo git log HEAD..origin/main all summary technical
+cargo run --release -- -r /path/to/your/repo -g log,HEAD..origin/main -s all -p summary,technical
 
 # Summarize the last 5 commits individually
-cargo run --release /path/to/your/repo git log -n 5 individual summary blog
+cargo run --release -- -r /path/to/your/repo -g log,-n,5 -s individual -p summary,blog
+
+# Summarize the current diff
+cargo run --release -- -r /path/to/your/repo -g diff -p summary,technical
 
 # Show help information
 cargo run --release -- --help
@@ -65,14 +66,13 @@ Replace `/path/to/your/repo` with the path to your git repository.
 ## Usage
 
 ```
-summarize_recent_commit <repo_path> git <git_command> <summary_type> [prompt_types...]
+cargo run --release -- -r <repo_path> -g <git_command> [-s <summary_type>] -p <prompt_types>
 ```
 
-- `<repo_path>`: Path to the git repository
-- `git`: Use 'git' as a fixed argument
-- `<git_command>`: Git command to execute (e.g., 'log -n 5', 'log HEAD..origin/main')
-- `<summary_type>`: Type of summary: 'all' or 'individual'
-- `[prompt_types]`: Optional: Types of summaries to generate (summary, technical, blog)
+- `-r <repo_path>`: Path to the git repository
+- `-g <git_command>`: Git command to execute (e.g., 'log,-n,5', 'log,HEAD..origin/main', 'diff')
+- `-s <summary_type>`: Type of summary: 'all', 'individual', or 'both' (only for log commands)
+- `-p <prompt_types>`: Types of summaries to generate (summary, technical, blog)
 
 For more detailed information, use the help command:
 
@@ -82,11 +82,12 @@ cargo run --release -- --help
 
 ## Overview
 
-Summarize Recent Commit is a tool that helps you quickly understand the changes made in the most recent commit of your project which are ahead of your local directory. It provides a concise summary of the commit message, files changed, and the impact of those changes.
+Summarize Recent Commit is a tool that helps you quickly understand the changes made in the most recent commits of your project or in the current diff. It provides a concise summary of the commit messages, files changed, and the impact of those changes.
 
 ## Features
 
-- **Commit Summary**: Get a brief overview of the latest commit.
+- **Commit Summary**: Get a brief overview of the latest commits.
+- **Diff Summary**: Understand the current changes in your working directory.
 - **File Changes**: See which files were added, modified, or deleted.
 - **Impact Analysis**: Understand the potential impact of the changes.
 
